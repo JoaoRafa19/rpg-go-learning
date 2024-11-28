@@ -7,9 +7,27 @@
     "expandedProjectPaths": [
     ],
     "fileStates": {
+        "tilesets/TilesetFloor.json": {
+            "dynamicWrapping": false,
+            "scaleInEditor": 1
+        },
+        "tilesets/TilesetFloor.tsx": {
+            "dynamicWrapping": false
+        },
+        "tilesets/buildings..tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/buildings.json": {
+            "dynamicWrapping": true,
+            "scaleInEditor": 1
+        }
     },
-    "last.imagePath": "C:/Users/jabir/Downloads/Ninja Adventure - Asset Pack/Ninja Adventure - Asset Pack/Backgrounds/Tilesets",
+    "last.exportedFilePath": "C:/Users/jabir/OneDrive/Dev/rpg-go/assets/maps",
+    "last.imagePath": "C:/Users/jabir/OneDrive/Dev/rpg-go/assets/maps/tilesets",
+    "lastUsedTilesetExportFilter": "Ficheiros de conjunto de tiles JSON (*.tsj *.json)",
     "map.height": 80,
+    "map.lastUsedExportFilter": "Todos os Ficheiros (*)",
     "map.lastUsedFormat": "json",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
@@ -17,11 +35,16 @@
     "openFiles": [
     ],
     "project": "rpg.tiled-project",
+    "property.type": "int",
     "recentFiles": [
+        "tilesets/buildings..tsx",
+        "tilesets/buildings.json",
+        "tilesets/TilesetFloor.json"
     ],
-    "tileset.lastUsedFormat": "tsx",
+    "tileset.lastUsedFormat": "json",
     "tileset.tileSize": {
         "height": 16,
         "width": 16
-    }
+    },
+    "tileset.type": 1
 }

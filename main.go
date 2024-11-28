@@ -2,77 +2,104 @@ package main
 
 import (
 	"fmt"
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"image"
 	"image/color"
 	"log"
 	"math"
 	"rpg-go/entities"
 	"sort"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type Game struct {
 	Player       *entities.Player
-	sprites      []*entities.Enemy
+	enemies      []*entities.Enemy
 	potions      []*entities.Potion
 	TilemapJSON  *TilemapJSON
+	Tilesets     []Tileset
 	TilemapImage *ebiten.Image
 	Camera       *Camera
+	Colliders    []image.Rectangle
+}
+
+func CheckCollisionsVerticaly(sprite *entities.Sprite, colliders []image.Rectangle) {
+	for _, collider := range colliders {
+		if collider.Overlaps(image.Rect(int(sprite.X), int(sprite.Y), int(sprite.X)+16, int(sprite.Y)+16)) {
+			if sprite.Dy > 0.0 {
+				sprite.Y = float64(collider.Min.Y) - 16.0
+			} else if sprite.Dy < 0.0 {
+				sprite.Y = float64(collider.Max.Y)
+			}
+		}
+	}
+}
+func CheckCollisionsHorizontaly(sprite *entities.Sprite, colliders []image.Rectangle) {
+	for _, collider := range colliders {
+		if collider.Overlaps(image.Rect(int(sprite.X), int(sprite.Y), int(sprite.X)+16, int(sprite.Y)+16)) {
+			if sprite.Dx > 0.0 {
+				sprite.X = float64(collider.Min.X) - 16.0
+			} else if sprite.Dx < 0.0 {
+				sprite.X = float64(collider.Max.X)
+			}
+		}
+	}
 }
 
 func (g *Game) Update() error {
 	// React to keyPresses
+	g.Player.Dx = 0.0
+	g.Player.Dy = 0.0
 
-	dx, dy := 0.0, 0.0
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		dy -= 2
+		g.Player.Dy = -2
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		dy += 2
+		g.Player.Dy = 2
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		dx -= 2
+		g.Player.Dx = -2
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		dx += 2
+		g.Player.Dx += 2
 	}
 	// Normalize movement
 	// Magnitude
-	magnitude := math.Sqrt(dx*dx + dy*dy)
+	magnitude := math.Sqrt(g.Player.Dx*g.Player.Dx + g.Player.Dy*g.Player.Dy)
 
 	if magnitude > 0.0 {
 		speed := 2.0
-		dx = (dx / magnitude) * speed
-		dy = (dy / magnitude) * speed
+		g.Player.Dx = (g.Player.Dx / magnitude) * speed
+		g.Player.Dy = (g.Player.Dy / magnitude) * speed
 	}
 
-	g.Player.X += dx
-	g.Player.Y += dy
+	g.Player.X += g.Player.Dx
+	CheckCollisionsHorizontaly(g.Player.Sprite, g.Colliders)
+	
+	g.Player.Y += g.Player.Dy
+	CheckCollisionsVerticaly(g.Player.Sprite, g.Colliders)
 
-	for _, sprite := range g.sprites {
+	for _, sprite := range g.enemies {
+		sprite.Dx = 0.0
+		sprite.Dy = 0.0
 		if sprite.FollowsPlayer {
 			if sprite.X < math.Floor(g.Player.X) {
-				sprite.X += 1
+				sprite.Dx += 1
 			} else if sprite.X > math.Floor(g.Player.X) {
-				sprite.X -= 1
+				sprite.Dx -= 1
 			}
 			if sprite.Y < math.Floor(g.Player.Y) {
-				sprite.Y += 1
+				sprite.Dy += 1
 			} else if sprite.Y > math.Floor(g.Player.Y) {
-				sprite.Y -= 1
+				sprite.Dy -= 1
 			}
 		}
-	}
-
-	for i, potion := range g.potions {
-		// Collision with player
-		if g.Player.IsColliding(potion.Sprite) {
-			g.Player.Health += potion.AmtHeal
-			fmt.Println("Player Healed:", g.Player.Health)
-			// remove potion from potions
-			g.potions = append(g.potions[:i], g.potions[i+1:]...)
-		}
+		sprite.X += sprite.Dx
+		CheckCollisionsHorizontaly(sprite.Sprite, g.Colliders)
+		sprite.Y += sprite.Dy
+		CheckCollisionsVerticaly(sprite.Sprite, g.Colliders)
 	}
 
 	g.Camera.FollowTarget(g.Player.X+8, g.Player.Y+8, 320, 240)
@@ -85,9 +112,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	opts := ebiten.DrawImageOptions{}
 
 	// loop over layers
-	for _, layer := range g.TilemapJSON.Layers {
+	for layerIndex, layer := range g.TilemapJSON.Layers {
 		// loop over the tiles
 		for index, id := range layer.Data {
+
+			if id == 0 {
+				continue
+			}
 
 			// get the position of pixel
 			x := index % layer.Width
@@ -97,35 +128,22 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			x *= 16
 			y *= 16
 
-			// get the position of the image where the tile id is
-			srcX := (id - 1) % 22
-			srcY := (id - 1) / 22
-
-			// convert to pixel position
-			srcX *= 16
-			srcY *= 16
-
-			// set the draw image options to draw on x,y
+			img := g.Tilesets[layerIndex].Img(id)
 			opts.GeoM.Translate(float64(x), float64(y))
-
+			opts.GeoM.Translate(0.0, -(float64(img.Bounds().Dy()) + 16))
 			opts.GeoM.Translate(g.Camera.X, g.Camera.Y)
 
-			//draw the image
-			screen.DrawImage(
-				// crop the image
-				g.TilemapImage.SubImage(
-					image.Rect(srcX, srcY, srcX+16, srcY+16)).(*ebiten.Image), &opts)
-			// reset the draw
+			screen.DrawImage(img, &opts)
+
 			opts.GeoM.Reset()
 		}
 	}
 
 	// set translation to players position
-	opts.GeoM.Translate(g.Player.X, g.Player.Y)
 
 	ent := []*entities.Sprite{g.Player.Sprite}
-	for _, sprite := range g.sprites {
-		ent = append(ent, sprite.Sprite)
+	for _, enemy := range g.enemies {
+		ent = append(ent, enemy.Sprite)
 	}
 	for _, potion := range g.potions {
 		ent = append(ent, potion.Sprite)
@@ -147,6 +165,19 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			&opts,
 		)
 		opts.GeoM.Reset()
+	}
+
+	for _, collider := range g.Colliders {
+		vector.StrokeRect(
+			screen,
+			float32(collider.Min.X)+float32(g.Camera.X),
+			float32(collider.Min.Y)+float32(g.Camera.Y),
+			float32(collider.Dx()),
+			float32(collider.Dy()),
+			1.0,
+			color.RGBA{255, 0, 0, 255},
+			true,
+		)
 	}
 
 	/*
@@ -190,7 +221,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	*/
 
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %0.2f", ebiten.CurrentFPS()))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %0.2f", ebiten.ActualFPS()))
 }
 
 func (g *Game) Layout(_, _ int) (screenWidth, screenHeight int) {
@@ -223,14 +254,22 @@ func main() {
 		Health: 3,
 	}
 
-	tileMapJson, err := NewTilemapLayerJSON("./assets/maps/spawn.json")
+	tilemapJSON, err := NewTilemapJSON("assets/maps/spawn.json")
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	tilesets, err := tilemapJSON.GenTilesets()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	game := &Game{
-		Player: player,
+		Tilesets: tilesets,
+		Player:   player,
+		Colliders: []image.Rectangle{
+			image.Rect(100, 100, 116, 116),
+		},
 		potions: []*entities.Potion{
 			{
 				Sprite: &entities.Sprite{
@@ -249,7 +288,7 @@ func main() {
 				AmtHeal: 1.0,
 			},
 		},
-		sprites: []*entities.Enemy{
+		enemies: []*entities.Enemy{
 			{
 				&entities.Sprite{
 					Img: skeleton,
@@ -275,7 +314,7 @@ func main() {
 				false,
 			},
 		},
-		TilemapJSON:  tileMapJson,
+		TilemapJSON:  tilemapJSON,
 		TilemapImage: tileMapImage,
 		Camera:       NewCamera(0, 0),
 	}
