@@ -6,7 +6,9 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"rpg-go/animations"
 	"rpg-go/entities"
+	"rpg-go/spritesheet"
 	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -15,14 +17,16 @@ import (
 )
 
 type Game struct {
-	Player       *entities.Player
-	enemies      []*entities.Enemy
-	potions      []*entities.Potion
-	TilemapJSON  *TilemapJSON
-	Tilesets     []Tileset
-	TilemapImage *ebiten.Image
-	Camera       *Camera
-	Colliders    []image.Rectangle
+	Player            *entities.Player
+	playerSpriteSheet *spritesheet.SpriteSheet
+	animationFram     int
+	enemies           []*entities.Enemy
+	potions           []*entities.Potion
+	TilemapJSON       *TilemapJSON
+	Tilesets          []Tileset
+	TilemapImage      *ebiten.Image
+	Camera            *Camera
+	Colliders         []image.Rectangle
 }
 
 func CheckCollisionsVerticaly(sprite *entities.Sprite, colliders []image.Rectangle) {
@@ -49,6 +53,7 @@ func CheckCollisionsHorizontaly(sprite *entities.Sprite, colliders []image.Recta
 }
 
 func (g *Game) Update() error {
+
 	// React to keyPresses
 	g.Player.Dx = 0.0
 	g.Player.Dy = 0.0
@@ -77,9 +82,14 @@ func (g *Game) Update() error {
 
 	g.Player.X += g.Player.Dx
 	CheckCollisionsHorizontaly(g.Player.Sprite, g.Colliders)
-	
+
 	g.Player.Y += g.Player.Dy
 	CheckCollisionsVerticaly(g.Player.Sprite, g.Colliders)
+
+	activeAnimation := g.Player.ActiveAnimation(int(g.Player.Dx), int(g.Player.Dy))
+	if activeAnimation != nil {
+		activeAnimation.Update()
+	}
 
 	for _, sprite := range g.enemies {
 		sprite.Dx = 0.0
@@ -141,7 +151,22 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// set translation to players position
 
-	ent := []*entities.Sprite{g.Player.Sprite}
+	opts.GeoM.Translate(g.Player.X, g.Player.Y)
+	opts.GeoM.Translate(g.Camera.X, g.Camera.Y)
+
+	playerFrame := 0
+	activeAnimation := g.Player.ActiveAnimation(int(g.Player.Dx), int(g.Player.Dy))
+	if activeAnimation != nil {
+		playerFrame = activeAnimation.Frame()
+	}
+	screen.DrawImage(
+		g.Player.Img.SubImage(
+			g.playerSpriteSheet.Rect(playerFrame),
+		).(*ebiten.Image),
+		&opts,
+	)
+	opts.GeoM.Reset()
+	ent := []*entities.Sprite{}
 	for _, enemy := range g.enemies {
 		ent = append(ent, enemy.Sprite)
 	}
@@ -246,6 +271,12 @@ func main() {
 	}
 	tileMapImage, _, err := ebitenutil.NewImageFromFile("./assets/images/TileSetFloor.png")
 	player := &entities.Player{
+		Animations: map[entities.PlayerState]*animations.Animation{
+			entities.Up:    animations.NewAnimation(5, 13, 4, 20.0),
+			entities.Down:  animations.NewAnimation(4, 12, 4, 20),
+			entities.Left:  animations.NewAnimation(6, 14, 4, 20),
+			entities.Right: animations.NewAnimation(7, 15, 4, 20),
+		},
 		Sprite: &entities.Sprite{
 			Img: playerImg,
 			X:   200,
@@ -263,10 +294,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	playerSpritesheet := spritesheet.NewSpriteSheet(4, 7, 16)
 
 	game := &Game{
-		Tilesets: tilesets,
-		Player:   player,
+		Tilesets:          tilesets,
+		Player:            player,
+		playerSpriteSheet: playerSpritesheet,
 		Colliders: []image.Rectangle{
 			image.Rect(100, 100, 116, 116),
 		},
@@ -290,28 +323,28 @@ func main() {
 		},
 		enemies: []*entities.Enemy{
 			{
-				&entities.Sprite{
+				Sprite: &entities.Sprite{
 					Img: skeleton,
 					X:   100,
 					Y:   100,
 				},
-				true,
+				FollowsPlayer: true,
 			},
 			{
-				&entities.Sprite{
+				Sprite: &entities.Sprite{
 					Img: skeleton,
 					X:   60,
 					Y:   70,
 				},
-				false,
+				FollowsPlayer: false,
 			},
 			{
-				&entities.Sprite{
+				Sprite: &entities.Sprite{
 					Img: skeleton,
 					X:   120,
 					Y:   180,
 				},
-				false,
+				FollowsPlayer: false,
 			},
 		},
 		TilemapJSON:  tilemapJSON,
