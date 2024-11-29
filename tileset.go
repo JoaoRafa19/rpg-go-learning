@@ -6,6 +6,7 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"rpg-go/constants"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -33,10 +34,10 @@ func (u *UniformTileset) Img(id int) *ebiten.Image {
 	srcY := (id) / 22
 
 	// convert to pixel position
-	srcX *= 16
-	srcY *= 16
+	srcX *= constants.Tilesize
+	srcY *= constants.Tilesize
 
-	return u.img.SubImage(image.Rect(srcX, srcY, srcX+16, srcY+16)).(*ebiten.Image)
+	return u.img.SubImage(image.Rect(srcX, srcY, srcX+constants.Tilesize, srcY+constants.Tilesize)).(*ebiten.Image)
 
 }
 
