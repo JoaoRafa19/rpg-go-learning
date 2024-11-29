@@ -20,7 +20,7 @@ import (
 )
 
 type Game struct {
-	Player            *entities.Player
+	player            *entities.Player
 	playerSpriteSheet *spritesheet.SpriteSheet
 	animationFram     int
 	enemies           []*entities.Enemy
@@ -59,7 +59,6 @@ func NewGame() *Game {
 			X:   200,
 			Y:   100,
 		},
-		Health: 3,
 	}
 
 	tilemapJSON, err := NewTilemapJSON("assets/maps/spawn.json")
@@ -75,7 +74,7 @@ func NewGame() *Game {
 
 	return &Game{
 		Tilesets:          tilesets,
-		Player:            player,
+		player:            player,
 		playerSpriteSheet: playerSpritesheet,
 		Colliders: []image.Rectangle{
 			image.Rect(100, 100, 116, 116),
@@ -106,7 +105,7 @@ func NewGame() *Game {
 					X:   100,
 					Y:   200,
 				},
-				CombatComp:    components.NewBasicCombat(3, 1),
+				CombatComp:    components.NewEnemieCombat(3, 1, 30),
 				FollowsPlayer: true,
 			},
 			{
@@ -116,7 +115,7 @@ func NewGame() *Game {
 					Y:   70,
 				},
 				FollowsPlayer: false,
-				CombatComp:    components.NewBasicCombat(3, 1),
+				CombatComp:    components.NewEnemieCombat(3, 1, 30),
 			},
 			{
 				Sprite: &entities.Sprite{
@@ -125,7 +124,7 @@ func NewGame() *Game {
 					Y:   180,
 				},
 				FollowsPlayer: false,
-				CombatComp:    components.NewBasicCombat(3, 1),
+				CombatComp:    components.NewEnemieCombat(3, 1, 30),
 			},
 		},
 		TilemapJSON:  tilemapJSON,
@@ -138,38 +137,38 @@ func NewGame() *Game {
 func (g *Game) Update() error {
 
 	// React to keyPresses
-	g.Player.Dx = 0.0
-	g.Player.Dy = 0.0
+	g.player.Dx = 0.0
+	g.player.Dy = 0.0
 
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		g.Player.Dy = -2
+		g.player.Dy = -2
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		g.Player.Dy = 2
+		g.player.Dy = 2
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		g.Player.Dx = -2
+		g.player.Dx = -2
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		g.Player.Dx += 2
+		g.player.Dx += 2
 	}
 	// Normalize movement
 	// Magnitude
-	magnitude := math.Sqrt(g.Player.Dx*g.Player.Dx + g.Player.Dy*g.Player.Dy)
+	magnitude := math.Sqrt(g.player.Dx*g.player.Dx + g.player.Dy*g.player.Dy)
 
 	if magnitude > 0.0 {
 		speed := 2.0
-		g.Player.Dx = (g.Player.Dx / magnitude) * speed
-		g.Player.Dy = (g.Player.Dy / magnitude) * speed
+		g.player.Dx = (g.player.Dx / magnitude) * speed
+		g.player.Dy = (g.player.Dy / magnitude) * speed
 	}
 
-	g.Player.X += g.Player.Dx
-	CheckCollisionsHorizontaly(g.Player.Sprite, g.Colliders)
+	g.player.X += g.player.Dx
+	CheckCollisionsHorizontaly(g.player.Sprite, g.Colliders)
 
-	g.Player.Y += g.Player.Dy
-	CheckCollisionsVerticaly(g.Player.Sprite, g.Colliders)
+	g.player.Y += g.player.Dy
+	CheckCollisionsVerticaly(g.player.Sprite, g.Colliders)
 
-	activeAnimation := g.Player.ActiveAnimation(int(g.Player.Dx), int(g.Player.Dy))
+	activeAnimation := g.player.ActiveAnimation(int(g.player.Dx), int(g.player.Dy))
 	if activeAnimation != nil {
 		activeAnimation.Update()
 	}
@@ -178,14 +177,14 @@ func (g *Game) Update() error {
 		sprite.Dx = 0.0
 		sprite.Dy = 0.0
 		if sprite.FollowsPlayer {
-			if sprite.X < math.Floor(g.Player.X) {
+			if sprite.X < math.Floor(g.player.X) {
 				sprite.Dx += 1
-			} else if sprite.X > math.Floor(g.Player.X) {
+			} else if sprite.X > math.Floor(g.player.X) {
 				sprite.Dx -= 1
 			}
-			if sprite.Y < math.Floor(g.Player.Y) {
+			if sprite.Y < math.Floor(g.player.Y) {
 				sprite.Dy += 1
-			} else if sprite.Y > math.Floor(g.Player.Y) {
+			} else if sprite.Y > math.Floor(g.player.Y) {
 				sprite.Dy -= 1
 			}
 		}
@@ -204,9 +203,16 @@ func (g *Game) Update() error {
 	worldY := float64(cY) - g.Camera.Y
 	deadEnemies := make(map[int]struct{})
 	g.Colliders = []image.Rectangle{}
+	g.player.CombatComp.Update()
+	pRect := image.Rect(
+		int(g.player.X),
+		int(g.player.Y),
+		int(g.player.X)+constants.Tilesize,
+		int(g.player.Y)+constants.Tilesize,
+	)
 
 	for idx, enemy := range g.enemies {
-
+		enemy.CombatComp.Update()
 		rect := image.Rect(
 			int(enemy.X),
 			int(enemy.Y),
@@ -214,10 +220,20 @@ func (g *Game) Update() error {
 			int(enemy.Y)+constants.Tilesize,
 		)
 
+		if rect.Overlaps(pRect) {
+			if enemy.CombatComp.Attack() {
+				g.player.CombatComp.Damage(enemy.CombatComp.AttackPower())
+				fmt.Println(fmt.Sprintf("DAMAGE::%d::%d", g.player.CombatComp.Health()))
+				if g.player.CombatComp.Health() <= 0 {
+					fmt.Println("player died!!!")
+				}
+			}
+		}
+
 		if worldX > float64(rect.Min.X) && worldX < float64(rect.Max.X) && worldY > float64(rect.Min.Y) && worldY < float64(rect.Max.Y) {
 
-			if clicked {
-				enemy.CombatComp.Damage(g.Player.CombatComp.AttackPower())
+			if clicked && math.Sqrt(math.Pow(float64(worldX)-g.player.X+(constants.Tilesize/2), 2)+math.Pow(float64(worldY)-g.player.Y+(constants.Tilesize/2), 2)) < constants.Tilesize*5 {
+				enemy.CombatComp.Damage(g.player.CombatComp.AttackPower())
 
 				if enemy.CombatComp.Health() <= 0 {
 					deadEnemies[idx] = struct{}{}
@@ -236,7 +252,7 @@ func (g *Game) Update() error {
 		g.enemies = newEnemies
 	}
 
-	g.Camera.FollowTarget(g.Player.X+8, g.Player.Y+8, 320, 240)
+	g.Camera.FollowTarget(g.player.X+8, g.player.Y+8, 320, 240)
 	g.Camera.Constrain(float64(g.TilemapJSON.Layers[0].Width*constants.Tilesize), float64(g.TilemapJSON.Layers[0].Height)*constants.Tilesize, 320, 240)
 	return nil
 }
@@ -275,16 +291,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// set translation to players position
 
-	opts.GeoM.Translate(g.Player.X, g.Player.Y)
+	opts.GeoM.Translate(g.player.X, g.player.Y)
 	opts.GeoM.Translate(g.Camera.X, g.Camera.Y)
 
 	playerFrame := 0
-	activeAnimation := g.Player.ActiveAnimation(int(g.Player.Dx), int(g.Player.Dy))
+	activeAnimation := g.player.ActiveAnimation(int(g.player.Dx), int(g.player.Dy))
 	if activeAnimation != nil {
 		playerFrame = activeAnimation.Frame()
 	}
 	screen.DrawImage(
-		g.Player.Img.SubImage(
+		g.player.Img.SubImage(
 			g.playerSpriteSheet.Rect(playerFrame),
 		).(*ebiten.Image),
 		&opts,

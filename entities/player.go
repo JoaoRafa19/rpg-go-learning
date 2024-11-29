@@ -16,7 +16,6 @@ const (
 
 type Player struct {
 	*Sprite
-	Health     uint
 	Animations map[PlayerState]*animations.Animation
 	CombatComp *components.BasicCombat
 }
