@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"rpg-go/animations"
+	"rpg-go/components"
 	"rpg-go/constants"
 	"rpg-go/entities"
 	"rpg-go/spritesheet"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -51,6 +53,7 @@ func NewGame() *Game {
 			entities.Left:  animations.NewAnimation(6, 14, 4, 20),
 			entities.Right: animations.NewAnimation(7, 15, 4, 20),
 		},
+		CombatComp: components.NewBasicCombat(3, 1),
 		Sprite: &entities.Sprite{
 			Img: playerImg,
 			X:   200,
@@ -70,12 +73,13 @@ func NewGame() *Game {
 	}
 	playerSpritesheet := spritesheet.NewSpriteSheet(4, 7, constants.Tilesize)
 
-	game := &Game{
+	return &Game{
 		Tilesets:          tilesets,
 		Player:            player,
 		playerSpriteSheet: playerSpritesheet,
 		Colliders: []image.Rectangle{
 			image.Rect(100, 100, 116, 116),
+			image.Rect(10, 10, 116, 116),
 		},
 		potions: []*entities.Potion{
 			{
@@ -100,8 +104,9 @@ func NewGame() *Game {
 				Sprite: &entities.Sprite{
 					Img: skeleton,
 					X:   100,
-					Y:   100,
+					Y:   200,
 				},
+				CombatComp:    components.NewBasicCombat(3, 1),
 				FollowsPlayer: true,
 			},
 			{
@@ -111,6 +116,7 @@ func NewGame() *Game {
 					Y:   70,
 				},
 				FollowsPlayer: false,
+				CombatComp:    components.NewBasicCombat(3, 1),
 			},
 			{
 				Sprite: &entities.Sprite{
@@ -119,13 +125,13 @@ func NewGame() *Game {
 					Y:   180,
 				},
 				FollowsPlayer: false,
+				CombatComp:    components.NewBasicCombat(3, 1),
 			},
 		},
 		TilemapJSON:  tilemapJSON,
 		TilemapImage: tileMapImage,
 		Camera:       NewCamera(0, 0),
 	}
-	return game
 
 }
 
@@ -187,6 +193,48 @@ func (g *Game) Update() error {
 		CheckCollisionsHorizontaly(sprite.Sprite, g.Colliders)
 		sprite.Y += sprite.Dy
 		CheckCollisionsVerticaly(sprite.Sprite, g.Colliders)
+	}
+
+	cX, cY := ebiten.CursorPosition()
+	clicked := inpututil.IsMouseButtonJustPressed(ebiten.MouseButton0)
+
+	// Converter para float64 para cálculos precisos
+
+	worldX := float64(cX) - g.Camera.X
+	worldY := float64(cY) - g.Camera.Y
+	deadEnemies := make(map[int]struct{})
+	g.Colliders = []image.Rectangle{}
+
+	for idx, enemy := range g.enemies {
+
+		rect := image.Rect(
+			int(enemy.X),
+			int(enemy.Y),
+			int(enemy.X)+constants.Tilesize,
+			int(enemy.Y)+constants.Tilesize,
+		)
+
+		if worldX > float64(rect.Min.X) && worldX < float64(rect.Max.X) && worldY > float64(rect.Min.Y) && worldY < float64(rect.Max.Y) {
+
+			if clicked {
+				fmt.Println("clicked in the enemy", idx)
+				enemy.CombatComp.Damage(g.Player.CombatComp.AttackPower())
+
+				if enemy.CombatComp.Health() <= 0 {
+					deadEnemies[idx] = struct{}{}
+				}
+			}
+		}
+	}
+
+	if len(deadEnemies) > 0 {
+		newEnemies := make([]*entities.Enemy, 0)
+		for index, enemy := range g.enemies {
+			if _, exts := deadEnemies[index]; !exts {
+				newEnemies = append(newEnemies, enemy)
+			}
+		}
+		g.enemies = newEnemies
 	}
 
 	g.Camera.FollowTarget(g.Player.X+8, g.Player.Y+8, 320, 240)
