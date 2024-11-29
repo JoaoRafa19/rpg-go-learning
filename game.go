@@ -217,7 +217,6 @@ func (g *Game) Update() error {
 		if worldX > float64(rect.Min.X) && worldX < float64(rect.Max.X) && worldY > float64(rect.Min.Y) && worldY < float64(rect.Max.Y) {
 
 			if clicked {
-				fmt.Println("clicked in the enemy", idx)
 				enemy.CombatComp.Damage(g.Player.CombatComp.AttackPower())
 
 				if enemy.CombatComp.Health() <= 0 {
