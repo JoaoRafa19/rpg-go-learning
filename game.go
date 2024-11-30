@@ -29,7 +29,7 @@ type Game struct {
 	Tilesets          []Tileset
 	TilemapImage      *ebiten.Image
 	Camera            *Camera
-	Colliders         []image.Rectangle
+	Coliders          []Collisor
 }
 
 func NewGame() *Game {
@@ -72,14 +72,13 @@ func NewGame() *Game {
 	}
 	playerSpritesheet := spritesheet.NewSpriteSheet(4, 7, constants.Tilesize)
 
+	colliders := tilemapJSON.GenCollisors()
 	return &Game{
 		Tilesets:          tilesets,
 		player:            player,
+		Coliders:          colliders,
 		playerSpriteSheet: playerSpritesheet,
-		Colliders: []image.Rectangle{
-			image.Rect(100, 100, 116, 116),
-			image.Rect(10, 10, 116, 116),
-		},
+
 		potions: []*entities.Potion{
 			{
 				Sprite: &entities.Sprite{
@@ -163,10 +162,10 @@ func (g *Game) Update() error {
 	}
 
 	g.player.X += g.player.Dx
-	CheckCollisionsHorizontaly(g.player.Sprite, g.Colliders)
+	CheckCollisionsHorizontaly(g.player.Sprite, g.Coliders)
 
 	g.player.Y += g.player.Dy
-	CheckCollisionsVerticaly(g.player.Sprite, g.Colliders)
+	CheckCollisionsVerticaly(g.player.Sprite, g.Coliders)
 
 	activeAnimation := g.player.ActiveAnimation(int(g.player.Dx), int(g.player.Dy))
 	if activeAnimation != nil {
@@ -189,9 +188,9 @@ func (g *Game) Update() error {
 			}
 		}
 		sprite.X += sprite.Dx
-		CheckCollisionsHorizontaly(sprite.Sprite, g.Colliders)
+		CheckCollisionsHorizontaly(sprite.Sprite, g.Coliders)
 		sprite.Y += sprite.Dy
-		CheckCollisionsVerticaly(sprite.Sprite, g.Colliders)
+		CheckCollisionsVerticaly(sprite.Sprite, g.Coliders)
 	}
 
 	cX, cY := ebiten.CursorPosition()
@@ -202,7 +201,7 @@ func (g *Game) Update() error {
 	worldX := float64(cX) - g.Camera.X
 	worldY := float64(cY) - g.Camera.Y
 	deadEnemies := make(map[int]struct{})
-	g.Colliders = []image.Rectangle{}
+
 	g.player.CombatComp.Update()
 	pRect := image.Rect(
 		int(g.player.X),
@@ -223,9 +222,8 @@ func (g *Game) Update() error {
 		if rect.Overlaps(pRect) {
 			if enemy.CombatComp.Attack() {
 				g.player.CombatComp.Damage(enemy.CombatComp.AttackPower())
-				fmt.Println(fmt.Sprintf("DAMAGE::%d::%d", g.player.CombatComp.Health()))
 				if g.player.CombatComp.Health() <= 0 {
-					fmt.Println("player died!!!")
+					//fmt.Println("player died!!!")
 				}
 			}
 		}
@@ -263,6 +261,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// loop over layers
 	for layerIndex, layer := range g.TilemapJSON.Layers {
+		if len(layer.Objects) > 0 {
+			for _, colisor := range layer.Objects {
+				vector.StrokeRect(
+					screen,
+					float32(colisor.X)+float32(g.Camera.X),
+					float32(colisor.Y)+float32(g.Camera.Y),
+					float32(colisor.Width),
+					float32(colisor.Width),
+					1.0,
+					color.RGBA{255, 0, 0, 255},
+					true,
+				)
+			}
+		}
 		// loop over the tiles
 		for index, id := range layer.Data {
 
@@ -332,18 +344,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		opts.GeoM.Reset()
 	}
 
-	for _, collider := range g.Colliders {
-		vector.StrokeRect(
-			screen,
-			float32(collider.Min.X)+float32(g.Camera.X),
-			float32(collider.Min.Y)+float32(g.Camera.Y),
-			float32(collider.Dx()),
-			float32(collider.Dy()),
-			1.0,
-			color.RGBA{255, 0, 0, 255},
-			true,
-		)
-	}
+	//for _, collider := range g.TilemapJSON.Tilesets. {
+
+	//}
 
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %0.2f", ebiten.ActualFPS()))
 }
