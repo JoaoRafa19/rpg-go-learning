@@ -3,12 +3,23 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "spawn.json",
     "expandedProjectPaths": [
+        ".",
+        "tilesets"
     ],
     "fileStates": {
+        "spawn.json": {
+            "scale": 1,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 1500,
+                "y": 846.5
+            }
+        },
         "tilesets/TilesetFloor.json": {
             "dynamicWrapping": false,
+            "scaleInDock": 0.75,
             "scaleInEditor": 1
         },
         "tilesets/TilesetFloor.tsx": {
@@ -20,6 +31,7 @@
         },
         "tilesets/buildings.json": {
             "dynamicWrapping": true,
+            "scaleInDock": 1,
             "scaleInEditor": 1
         }
     },
@@ -33,13 +45,17 @@
     "map.tileWidth": 16,
     "map.width": 100,
     "openFiles": [
+        "spawn.json",
+        "tilesets/buildings.json",
+        "tilesets/TilesetFloor.json"
     ],
     "project": "rpg.tiled-project",
     "property.type": "int",
     "recentFiles": [
-        "tilesets/buildings..tsx",
+        "tilesets/TilesetFloor.json",
         "tilesets/buildings.json",
-        "tilesets/TilesetFloor.json"
+        "spawn.json",
+        "tilesets/buildings..tsx"
     ],
     "tileset.lastUsedFormat": "json",
     "tileset.tileSize": {
