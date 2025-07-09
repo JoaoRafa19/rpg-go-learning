@@ -140,7 +140,7 @@ func (g *GameScene) Update() SceneId {
 	g.player.Move()
 
 	// 2. Atualizar animações
-	activeAnimation := g.player.ActiveAnimation(int(g.player.Dx), int(g.player.Dy))
+	activeAnimation := g.player.ActiveAnimation()
 	if activeAnimation != nil {
 		activeAnimation.Update()
 	}

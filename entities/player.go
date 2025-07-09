@@ -18,6 +18,7 @@ const (
 	Left
 	Right
 	AttackRight
+	AttackLeft
 )
 
 type Player struct {
@@ -37,7 +38,8 @@ func NewPlayer(img *ebiten.Image) *Player {
 			Down:        animations.NewAnimation(4, 12, 4, 20),
 			Left:        animations.NewAnimation(6, 14, 4, 20),
 			Right:       animations.NewAnimation(7, 15, 4, 20),
-			AttackRight: animations.NewAnimation(19, 23, 4, 10),
+			AttackRight: animations.NewAnimation(19, 19, 0, 20),
+			AttackLeft:  animations.NewAnimation(18, 18, 0, 20),
 		},
 		Facing: Down,
 
@@ -51,6 +53,7 @@ func NewPlayer(img *ebiten.Image) *Player {
 func (p *Player) ActiveAnimation() *animations.Animation {
 
 	if p.isAttacking {
+
 		return p.Animations[AttackRight]
 	}
 
@@ -132,7 +135,7 @@ func (p *Player) Move() {
 
 }
 
-const playerAttackDuration = 24
+const playerAttackDuration = 20
 
 func (p *Player) IsAttacking() bool {
 	return p.isAttacking

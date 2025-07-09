@@ -1,6 +1,10 @@
 package entities
 
-import "github.com/hajimehoshi/ebiten/v2"
+import (
+	"github.com/hajimehoshi/ebiten/v2"
+	"rpg-go/camera"
+	"rpg-go/spritesheet"
+)
 
 type Projectile struct {
 	*Sprite
@@ -29,6 +33,13 @@ func (p *Projectile) GetY() float64 {
 	return p.Y
 }
 
-func (p *Projectile) Draw(screen *ebiten.Image) {
+func (p *Projectile) Draw(screen *ebiten.Image, cam *camera.Camera, _ *spritesheet.SpriteSheet) {
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(p.X, p.Y)
+	opts.GeoM.Translate(cam.X, cam.Y)
+	opts.GeoM.Rotate(p.LifeSpan)
 
+	// Por enquanto, a shuriken não tem animação, então desenhamos a imagem inteira.
+	// O ideal é que a imagem já seja do tamanho correto (ex: 16x16).
+	screen.DrawImage(p.Img, opts)
 }
