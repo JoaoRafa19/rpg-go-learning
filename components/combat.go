@@ -7,20 +7,34 @@ type Combat interface {
 	Attack() bool
 	Update()
 	Damage(amount int)
+	MaxHealth() int
 }
 
 type BasicCombat struct {
 	health      int
 	attackPower int
 	attacking   bool
+	maxHeath    int
+}
+
+func (b *BasicCombat) Heal(i int) {
+	b.health += i
+	// if b.health >= b.maxHeath {
+	// 	b.health = b.maxHeath
+	// }
 }
 
 func NewBasicCombat(health, attackPower int) *BasicCombat {
 	return &BasicCombat{
-		health,
-		attackPower,
-		false,
+		health:      health,
+		attackPower: attackPower,
+		attacking:   false,
+		maxHeath:    health,
 	}
+}
+
+func (b *BasicCombat) MaxHealth() int {
+	return b.maxHeath
 }
 
 func (b *BasicCombat) Damage(amount int) {

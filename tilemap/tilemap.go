@@ -9,10 +9,29 @@ import (
 
 // data we want for one layer in our list of layers
 type TilemapLayerJSON struct {
-	Data   []int  `json:"data"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-	Name   string `json:"name"`
+	Data    []int         `json:"data"`
+	Width   int           `json:"width"`
+	Height  int           `json:"height"`
+	Name    string        `json:"name"`
+	Type    string        `json:"type"` // "tilelayer" ou "objectgroup"
+	Objects []TiledObject `json:"objects"`
+}
+
+type TiledProperty struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Value any    `json:"value"`
+}
+
+type TiledObject struct {
+	ID         int             `json:"id"`
+	Name       string          `json:"name"`
+	Type       string          `json:"type"`
+	X          float64         `json:"x"`
+	Y          float64         `json:"y"`
+	Width      float64         `json:"width"`
+	Height     float64         `json:"height"`
+	Properties []TiledProperty `json:"properties"`
 }
 
 // all layers in a tilemap
@@ -23,8 +42,8 @@ type TilemapJSON struct {
 }
 
 // temp function to generate all of our tilesets and return a slice of them
-func (t *TilemapJSON) GenTilesets() ([]tileset.Tileset, error) {
-	tilesets := make([]tileset.Tileset, 0)
+func (t *TilemapJSON) GenTilesets() ([]*tileset.Tileset, error) {
+	tilesets := make([]*tileset.Tileset, 0)
 
 	for _, tilesetData := range t.Tilesets {
 		// convert map relative path to project relative path

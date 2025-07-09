@@ -9,6 +9,10 @@ type Animation struct {
 	frame        int
 }
 
+func (a *Animation) GetFirstFrame() int {
+	return a.FirstFrame
+}
+
 func (a *Animation) Update() {
 	a.frameCounter -= 1.0
 	if a.frameCounter < 0.0 {

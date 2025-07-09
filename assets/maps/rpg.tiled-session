@@ -10,11 +10,11 @@
     ],
     "fileStates": {
         "spawn.json": {
-            "scale": 1,
+            "scale": 3,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 1500,
-                "y": 846.5
+                "x": 237,
+                "y": 159
             }
         },
         "tilesets/TilesetFloor.json": {
@@ -37,20 +37,21 @@
     },
     "last.exportedFilePath": "C:/Users/jabir/OneDrive/Dev/rpg-go/assets/maps",
     "last.imagePath": "C:/Users/jabir/OneDrive/Dev/rpg-go/assets/maps/tilesets",
+    "last.objectTemplatePath": "C:/Users/Joao-Santos/rpg-go-learning/assets/maps/tilesets",
     "lastUsedTilesetExportFilter": "Ficheiros de conjunto de tiles JSON (*.tsj *.json)",
-    "map.height": 80,
+    "map.height": 14,
     "map.lastUsedExportFilter": "Todos os Ficheiros (*)",
     "map.lastUsedFormat": "json",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
-    "map.width": 100,
+    "map.width": 12,
     "openFiles": [
         "spawn.json",
         "tilesets/buildings.json",
         "tilesets/TilesetFloor.json"
     ],
     "project": "rpg.tiled-project",
-    "property.type": "int",
+    "property.type": "float",
     "recentFiles": [
         "tilesets/TilesetFloor.json",
         "tilesets/buildings.json",

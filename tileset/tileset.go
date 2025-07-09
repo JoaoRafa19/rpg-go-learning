@@ -4,157 +4,110 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"log"
 	"os"
 	"path/filepath"
 	"rpg-go/constants"
-	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-type Tileset interface {
-	Img(id int) *ebiten.Image
-}
-
-type UniformTilesetJSON struct {
-	Path string `json:"image"`
-	Gid  int
-}
-
-type UniformTileset struct {
-	img *ebiten.Image
-	gid int
-}
-
-func (u *UniformTileset) Img(id int) *ebiten.Image {
-	id -= u.gid
-	// get the position of the image where the tile id is
-	srcX := (id) % 22
-	srcY := (id) / 22
-
-	// convert to pixel position
-	srcX *= constants.Tilesize
-	srcY *= constants.Tilesize
-
-	return u.img.SubImage(image.Rect(srcX, srcY, srcX+constants.Tilesize, srcY+constants.Tilesize)).(*ebiten.Image)
-
-}
-
-type TilesetType int
-
-const (
-	Uniform TilesetType = iota
-	Dynamic
-)
-
-type TilesetJSONProperty struct {
-	Name  string      `json:"name"`
-	Type  string      `json:"type"`
-	Value TilesetType `json:"value"`
-}
-
+// TilesetJSON espelha a estrutura de um arquivo .tsx exportado como .json
 type TilesetJSON struct {
-	Properties []*TilesetJSONProperty `json:"properties"`
+	Image       string     `json:"image"`       // Usado por tilesets baseados em uma única imagem (spritesheet)
+	Columns     int        `json:"columns"`     // Número de colunas no spritesheet. ESSENCIAL!
+	TileWidth   int        `json:"tilewidth"`
+	TileHeight  int        `json:"tileheight"`
+	Tiles       []TileJSON `json:"tiles"`       // Usado por tilesets baseados em uma coleção de imagens
 }
 
+// TileJSON representa um único tile dentro de uma coleção de imagens.
 type TileJSON struct {
-	Id     int    `json:"id"`
-	Path   string `json:"image"`
-	Width  int    `json:"imagewidth"`
-	Height int    `json:"imageheight"`
+	ID    int    `json:"id"`
+	Image string `json:"image"`
 }
 
-type DynamicTilesetJSON struct {
-	Tiles []*TileJSON `json:"tiles"`
+// Tileset é a nossa estrutura unificada. Ela pode representar tanto um
+// tileset de imagem única (spritesheet) quanto uma coleção de imagens.
+type Tileset struct {
+	FirstGid int
+	
+	// Para tilesets de imagem única (spritesheet)
+	spritesheet *ebiten.Image
+	columns     int
+
+	// Para tilesets de coleção de imagens
+	individualTiles map[int]*ebiten.Image
 }
 
-type DynTileset struct {
-	imgs []*ebiten.Image
-	gid  int
-}
-
-func (d *DynTileset) Img(id int) *ebiten.Image {
-	id -= d.gid
-
-	return d.imgs[id]
-}
-
-func normalizePath(path string) string {
-	op := path
-	op = filepath.Clean(op)
-	op = strings.ReplaceAll(op, "\\", "/")
-	op = strings.TrimPrefix(op, "../")
-	op = strings.TrimPrefix(op, "../")
-	op = filepath.Join("./assets/", op)
-	fmt.Println(op)
-	return op
-}
-
-func NewTileset(path string, git int) (Tileset, error) {
+// NewTileset é a nossa factory. Ela lê um arquivo de tileset do Tiled,
+// determina seu tipo, e retorna uma struct Tileset pronta para uso.
+func NewTileset(path string, firstGid int) (*Tileset, error) {
 	contents, err := os.ReadFile(path)
-
 	if err != nil {
-		fmt.Println("Load file err", err)
-		return nil, err
+		return nil, fmt.Errorf("falha ao ler o arquivo do tileset %s: %w", path, err)
 	}
 
-	var tilesetJSON TilesetJSON
-
-	err = json.Unmarshal(contents, &tilesetJSON)
-	if err != nil {
-		fmt.Println("Unmarshal file err", err)
-		return nil, err
+	var data TilesetJSON
+	if err := json.Unmarshal(contents, &data); err != nil {
+		return nil, fmt.Errorf("falha ao decodificar o JSON do tileset %s: %w", path, err)
 	}
-	var t TilesetType
-	if strings.Contains(path, "buildings") {
-		t = Dynamic
+
+	tileset := &Tileset{
+		FirstGid: firstGid,
+	}
+
+	// baseDir é o diretório onde o arquivo .tsx/.json está, para resolver caminhos relativos.
+	baseDir := filepath.Dir(path)
+
+	// DETERMINAÇÃO DE TIPO:
+	// Se a propriedade "image" existe, é um tileset de imagem única (spritesheet).
+	if data.Image != "" {
+		// É um tileset de imagem única (Uniform)
+		imgPath := filepath.Join(baseDir, data.Image)
+		img, _, err := ebitenutil.NewImageFromFile(imgPath)
+		if err != nil {
+			return nil, fmt.Errorf("falha ao carregar a imagem do tileset %s: %w", imgPath, err)
+		}
+		tileset.spritesheet = img
+		tileset.columns = data.Columns // Lendo o número de colunas do arquivo!
+		
+		if tileset.columns == 0 {
+			log.Printf("Aviso: Tileset '%s' não tem 'columns' definido. Assumindo que a largura é a da imagem.", path)
+			tileset.columns = img.Bounds().Dx() / constants.Tilesize
+		}
+		
 	} else {
-		t = Uniform
-	}
-
-	switch t {
-	case Uniform:
-		uniTileJson := &UniformTilesetJSON{}
-		err = json.Unmarshal(contents, uniTileJson)
-		if err != nil {
-			fmt.Println("Unmarshal content err", err)
-			return nil, err
-		}
-
-		uniformTileset := &UniformTileset{}
-
-		img, _, err := ebitenutil.NewImageFromFile(normalizePath(uniTileJson.Path))
-		if err != nil {
-			fmt.Println("EbitenImage err", err)
-			return nil, err
-		}
-		uniformTileset.img = img
-		uniformTileset.gid = git
-		return uniformTileset, nil
-
-	case Dynamic:
-		dynTilesJson := &DynamicTilesetJSON{}
-		err = json.Unmarshal(contents, dynTilesJson)
-		if err != nil {
-			return nil, err
-		}
-		var dynTilset DynTileset
-		dynTilset.gid = git
-		dynTilset.imgs = make([]*ebiten.Image, 0)
-		for _, tileJson := range dynTilesJson.Tiles {
-			imgPath := filepath.Join("maps", "tilesets", tileJson.Path)
-			imgPath = normalizePath(imgPath)
-			imgPath = strings.ReplaceAll(imgPath, "\\", "/")
+		// É um tileset de coleção de imagens (Dynamic)
+		tileset.individualTiles = make(map[int]*ebiten.Image)
+		for _, tileData := range data.Tiles {
+			imgPath := filepath.Join(baseDir, tileData.Image)
 			img, _, err := ebitenutil.NewImageFromFile(imgPath)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("falha ao carregar a imagem do tile individual %s: %w", imgPath, err)
 			}
-			dynTilset.imgs = append(dynTilset.imgs, img)
+			tileset.individualTiles[tileData.ID] = img
 		}
-		return &dynTilset, nil
 	}
 
-	// return uniform
-	return nil, fmt.Errorf("Tileset not found in %s", path)
+	return tileset, nil
+}
+
+func (t *Tileset) Img(id int) *ebiten.Image {
+	localID := id - t.FirstGid
+
+	if t.individualTiles != nil {
+		return t.individualTiles[localID]
+	}
+
+	if t.spritesheet != nil {
+		srcX := (localID % t.columns) * constants.Tilesize
+		srcY := (localID / t.columns) * constants.Tilesize
+
+		rect := image.Rect(srcX, srcY, srcX+constants.Tilesize, srcY+constants.Tilesize)
+		return t.spritesheet.SubImage(rect).(*ebiten.Image)
+	}
+
+	return nil 
 }

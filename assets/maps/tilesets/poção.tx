@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<template>
+ <object name="poção" type="potion_spawn">
+  <properties>
+   <property name="amount" type="float" value="0.1"/>
+  </properties>
+  <point/>
+ </object>
+</template>
