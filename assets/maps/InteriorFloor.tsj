@@ -1,0 +1,14 @@
+{ "columns":22,
+ "image":"..\/images\/TilesetInteriorFloor.png",
+ "imageheight":272,
+ "imagewidth":352,
+ "margin":0,
+ "name":"interior_floor",
+ "spacing":0,
+ "tilecount":374,
+ "tiledversion":"1.11.1",
+ "tileheight":16,
+ "tilewidth":16,
+ "type":"tileset",
+ "version":"1.10"
+}

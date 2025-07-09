@@ -17,29 +17,58 @@ const (
 	Up
 	Left
 	Right
+	AttackRight
 )
 
 type Player struct {
 	*Sprite
 	Animations map[PlayerState]*animations.Animation
 	CombatComp *components.BasicCombat
+
+	Facing      PlayerState
+	isAttacking bool // Atacando agora?
+	AttackTick  int  // Duração do ataque
 }
 
-func (p *Player) ActiveAnimation(dx, dy int) *animations.Animation {
-	if dx > 0 {
+func NewPlayer(img *ebiten.Image) *Player {
+	return &Player{
+		Animations: map[PlayerState]*animations.Animation{
+			Up:          animations.NewAnimation(5, 13, 4, 20.0),
+			Down:        animations.NewAnimation(4, 12, 4, 20),
+			Left:        animations.NewAnimation(6, 14, 4, 20),
+			Right:       animations.NewAnimation(7, 15, 4, 20),
+			AttackRight: animations.NewAnimation(19, 23, 4, 10),
+		},
+		Facing: Down,
+
+		CombatComp: components.NewBasicCombat(10, 1), // Aumentei a vida para 10
+		Sprite: &Sprite{
+			Img: img,
+		},
+	}
+}
+
+func (p *Player) ActiveAnimation() *animations.Animation {
+
+	if p.isAttacking {
+		return p.Animations[AttackRight]
+	}
+
+	// Lógica de movimento (como antes)
+	if p.Dx > 0 {
 		return p.Animations[Right]
 	}
-	if dx < 0 {
+	if p.Dx < 0 {
 		return p.Animations[Left]
 	}
-	if dy > 0 {
+	if p.Dy > 0 {
 		return p.Animations[Down]
 	}
-	if dy < 0 {
+	if p.Dy < 0 {
 		return p.Animations[Up]
 	}
 
-	return nil
+	return nil // Parado
 
 }
 
@@ -52,14 +81,14 @@ func (p *Player) Draw(screen *ebiten.Image, cam *camera.Camera, sheet *spriteshe
 	opts.GeoM.Translate(p.X, p.Y)
 	opts.GeoM.Translate(cam.X, cam.Y)
 
-	activeAnimation := p.ActiveAnimation(int(p.Dx), int(p.Dy))
+	activeAnimation := p.ActiveAnimation()
 	playerFrame := 0
 	if activeAnimation != nil {
 		// Pega o índice do frame atual da animação
 		playerFrame = activeAnimation.Frame()
 	} else {
 		// Se estiver parado, pegue o primeiro frame da animação "Down" como padrão
-		// Você pode ajustar isso para a direção que o jogador estava olhando por último
+		// Você pode ajustar isso para a direção que o jogador olhou por último
 		playerFrame = p.Animations[Down].GetFirstFrame()
 	}
 
@@ -70,7 +99,7 @@ func (p *Player) Draw(screen *ebiten.Image, cam *camera.Camera, sheet *spriteshe
 	opts.GeoM.Translate(p.X, p.Y)
 	opts.GeoM.Translate(cam.X, cam.Y)
 
-	// Desenha APENAS a sub-imagem correspondente ao frame
+	// Desenha APENAS a imagem correspondente ao frame
 	screen.DrawImage(p.Img.SubImage(frameRect).(*ebiten.Image), opts)
 }
 
@@ -101,4 +130,42 @@ func (p *Player) Move() {
 		p.Dy = (p.Dy / magnitude) * speed
 	}
 
+}
+
+const playerAttackDuration = 24
+
+func (p *Player) IsAttacking() bool {
+	return p.isAttacking
+}
+
+func (p *Player) Attack() {
+	if !p.isAttacking {
+		p.isAttacking = true
+		p.AttackTick = 0
+		// Reinicia a animação de ataque correspondente
+		// p.Animations[p.facingAttackState()].Reset() // Veremos isso depois
+	}
+}
+
+func (p *Player) SetFacing(dir PlayerState) {
+	p.Facing = dir
+}
+
+func (p *Player) UpdateAttack() {
+	if p.isAttacking {
+		p.AttackTick++
+		if p.AttackTick >= playerAttackDuration {
+			p.isAttacking = false // O tempo do ataque acabou, voltamos ao estado normal.
+		}
+	}
+}
+
+func (p *Player) UpdateAttackTick() {
+	if p.isAttacking {
+		p.AttackTick++
+		if p.AttackTick >= playerAttackDuration {
+			p.isAttacking = false
+			p.AttackTick = 0
+		}
+	}
 }

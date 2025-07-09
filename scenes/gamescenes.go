@@ -6,9 +6,7 @@ import (
 	"image/color"
 	"log"
 	"math"
-	"rpg-go/animations"
 	"rpg-go/camera"
-	"rpg-go/components"
 	"rpg-go/constants"
 	"rpg-go/entities"
 	"rpg-go/hud"
@@ -25,19 +23,18 @@ import (
 type GameScene struct {
 	player            *entities.Player
 	playerSpriteSheet *spritesheet.SpriteSheet
-	enemies           []*entities.Enemy
-	potions           []*entities.Potion
-	TilemapJSON       *tilemap.TilemapJSON
-	Tilesets          []*tileset.Tileset
-	Camera            *camera.Camera
-	Colliders         []image.Rectangle
-	loaded            bool
-	hud               *hud.HUD
 
-	// Assets que não mudam entre mapas
-	playerImg   *ebiten.Image
-	skeletonImg *ebiten.Image
-	potionImg   *ebiten.Image
+	enemies     []*entities.Enemy
+	potions     []*entities.Potion
+	dummies     []*entities.TrainingDummy
+	projectiles []*entities.Projectile
+
+	TilemapJSON *tilemap.TilemapJSON
+	Tilesets    []*tileset.Tileset
+	Camera      *camera.Camera
+	Colliders   []image.Rectangle
+	loaded      bool
+	hud         *hud.HUD
 }
 
 func NewGameScene() *GameScene {
@@ -51,31 +48,17 @@ func NewGameScene() *GameScene {
 
 func (g *GameScene) FirstLoad() {
 	var err error
-	g.playerImg, _, err = ebitenutil.NewImageFromFile("./assets/images/ninja.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-	g.skeletonImg, _, err = ebitenutil.NewImageFromFile("./assets/images/skeleton.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-	g.potionImg, _, err = ebitenutil.NewImageFromFile("./assets/images/health.png")
+	playerImg, _, err := ebitenutil.NewImageFromFile("./assets/images/ninja.png")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	g.player = &entities.Player{
-		Animations: map[entities.PlayerState]*animations.Animation{
-			entities.Up:    animations.NewAnimation(5, 13, 4, 20.0),
-			entities.Down:  animations.NewAnimation(4, 12, 4, 20),
-			entities.Left:  animations.NewAnimation(6, 14, 4, 20),
-			entities.Right: animations.NewAnimation(7, 15, 4, 20),
-		},
-		CombatComp: components.NewBasicCombat(10, 1), // Aumentei a vida para 10
-		Sprite: &entities.Sprite{
-			Img: g.playerImg,
-		},
+	_, _, err = ebitenutil.NewImageFromFile("./assets/images/shuriken.png")
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	g.player = entities.NewPlayer(playerImg)
 
 	g.playerSpriteSheet = spritesheet.NewSpriteSheet(4, 7, constants.Tilesize)
 	g.hud = hud.NewHUD(g.player.CombatComp)
@@ -85,85 +68,6 @@ func (g *GameScene) FirstLoad() {
 	g.LoadMap("assets/maps/spawn.json", "default")
 
 	g.loaded = true
-}
-
-// LoadMap limpa o estado do mapa antigo e carrega um novo.
-func (g *GameScene) LoadMap(mapPath string, targetSpawn string) {
-	// Limpa entidades e colisões do mapa anterior
-	g.enemies = make([]*entities.Enemy, 0)
-	g.potions = make([]*entities.Potion, 0)
-	g.Colliders = make([]image.Rectangle, 0)
-
-	// Carrega o JSON do novo mapa
-	tilemapJSON, err := tilemap.NewTilemapJSON(mapPath)
-	if err != nil {
-		log.Fatalf("Could not load map %s: %v", mapPath, err)
-	}
-	g.TilemapJSON = tilemapJSON
-
-	// Gera os tilesets para o novo mapa
-	tilesets, err := tilemapJSON.GenTilesets()
-	if err != nil {
-		log.Fatal(err)
-	}
-	g.Tilesets = tilesets
-
-	spawnPoints := make(map[string]image.Point)
-
-	// Carrega os objetos do mapa (inimigos, poções, colisões, spawns)
-	for _, layer := range g.TilemapJSON.Layers {
-		if layer.Type == "objectgroup" {
-			for _, obj := range layer.Objects {
-				switch obj.Type {
-				case "player_spawn":
-					spawnName := obj.Name
-					if spawnName == "" {
-						spawnName = "default"
-					}
-					spawnPoints[spawnName] = image.Point{X: int(obj.X), Y: int(obj.Y)}
-
-				case "collision":
-					g.Colliders = append(g.Colliders, image.Rect(int(obj.X), int(obj.Y), int(obj.X+obj.Width), int(obj.Y+obj.Height)))
-
-				case "enemy_spawn":
-					follows := false
-					for _, prop := range obj.Properties {
-						if prop.Name == "followsPlayer" {
-							if val, ok := prop.Value.(bool); ok {
-								follows = val
-							}
-						}
-					}
-					newEnemy := &entities.Enemy{
-						Sprite:        &entities.Sprite{Img: g.skeletonImg, X: obj.X, Y: obj.Y},
-						FollowsPlayer: follows,
-						CombatComp:    components.NewEnemieCombat(3, 1, 60), // Cooldown de 1s (60 ticks)
-					}
-					g.enemies = append(g.enemies, newEnemy)
-
-				case "potion_spawn":
-					amount, found := tilemap.GetIntProperty("amount", obj.Properties)
-					if !found {
-						amount = 2
-					}
-					newPotion := &entities.Potion{
-						Sprite:  &entities.Sprite{Img: g.potionImg, X: obj.X, Y: obj.Y},
-						AmtHeal: uint(amount),
-					}
-					g.potions = append(g.potions, newPotion)
-				}
-			}
-		}
-	}
-
-	// Posiciona o jogador no ponto de spawn correto
-	spawnPos, found := spawnPoints[targetSpawn]
-	if !found {
-		// Se o spawn alvo não for encontrado, usa o "default"
-		spawnPos = spawnPoints["default"]
-	}
-	g.player.X = float64(spawnPos.X)
-	g.player.Y = float64(spawnPos.Y)
 }
 
 func (g *GameScene) Draw(screen *ebiten.Image) {
@@ -203,6 +107,9 @@ func (g *GameScene) Draw(screen *ebiten.Image) {
 	for _, e := range g.enemies {
 		drawables = append(drawables, e)
 	}
+	for _, e := range g.dummies {
+		drawables = append(drawables, e)
+	}
 	for _, p := range g.potions {
 		drawables = append(drawables, p)
 	}
@@ -228,6 +135,10 @@ func (g *GameScene) Update() SceneId {
 	// 1. Lidar com a entrada e movimento do jogador
 	g.handlePlayerMovement()
 
+	g.player.UpdateAttackTick()
+
+	g.player.Move()
+
 	// 2. Atualizar animações
 	activeAnimation := g.player.ActiveAnimation(int(g.player.Dx), int(g.player.Dy))
 	if activeAnimation != nil {
@@ -242,6 +153,9 @@ func (g *GameScene) Update() SceneId {
 
 	// 5. Lidar com itens coletáveis
 	g.handleCollectibles()
+
+	//
+	g.player.UpdateAttack()
 
 	// 6. Checar transições de mapa
 	if nextMap, nextSpawn := g.checkMapTransitions(); nextMap != "" {
@@ -263,17 +177,24 @@ func (g *GameScene) handlePlayerMovement() {
 	g.player.Dx = 0.0
 	g.player.Dy = 0.0
 
-	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		g.player.Dy = -2
+	if !g.player.IsAttacking() {
+
+		if ebiten.IsKeyPressed(ebiten.KeyW) {
+			g.player.Dy = -2
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyS) {
+			g.player.Dy = 2
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyA) {
+			g.player.Dx = -2
+		}
+		if ebiten.IsKeyPressed(ebiten.KeyD) {
+			g.player.Dx += 2
+		}
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		g.player.Dy = 2
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		g.player.Dx = -2
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		g.player.Dx += 2
+
+	if ebiten.IsKeyPressed(ebiten.KeySpace) {
+		g.player.Attack()
 	}
 
 	if g.player.Dx != 0 || g.player.Dy != 0 {
@@ -289,6 +210,10 @@ func (g *GameScene) handlePlayerMovement() {
 }
 
 func (g *GameScene) updateEnemies() {
+	for _, d := range g.dummies {
+		d.Update()
+	}
+
 	for _, enemy := range g.enemies {
 		enemy.CombatComp.Update()
 
@@ -324,6 +249,22 @@ func (g *GameScene) handleCombat() {
 	deadEnemies := map[int]struct{}{}
 	pRect := image.Rect(int(g.player.X), int(g.player.Y), int(g.player.X)+constants.Tilesize, int(g.player.Y)+constants.Tilesize)
 
+	for _, d := range g.dummies {
+		if clicked {
+			cX, cY := ebiten.CursorPosition()
+			worldX, worldY := float64(cX)-g.Camera.X, float64(cY)-g.Camera.Y
+
+			if worldX >= d.X && worldX < d.X+constants.Tilesize && worldY >= d.Y && worldY < d.Y+constants.Tilesize*2 {
+				// Verifica o alcance do ataque
+				distance := math.Sqrt(math.Pow(d.X-g.player.X, 2) + math.Pow(d.Y-g.player.Y, 2))
+				if distance < float64(constants.Tilesize)*2.5 { // Alcance de ataque de 2.5 tiles
+					fmt.Println("Dummy took damage! Health: %d\n")
+					d.Hit()
+				}
+			}
+		}
+	}
+
 	for idx, enemy := range g.enemies {
 		enemyRect := image.Rect(int(enemy.X), int(enemy.Y), int(enemy.X)+constants.Tilesize, int(enemy.Y)+constants.Tilesize)
 
@@ -335,6 +276,7 @@ func (g *GameScene) handleCombat() {
 				if g.player.CombatComp.Health() <= 0 {
 					fmt.Println("PLAYER DIED! Game Over.")
 					// TODO: Implementar lógica de Game Over (ex: ir para uma cena de Game Over)
+
 				}
 			}
 		}
@@ -372,7 +314,7 @@ func (g *GameScene) handleCombat() {
 }
 
 func (g *GameScene) handleCollectibles() {
-	potionsToCollect := []int{}
+	var potionsToCollect []int
 	pRect := image.Rect(int(g.player.X), int(g.player.Y), int(g.player.X)+constants.Tilesize, int(g.player.Y)+constants.Tilesize)
 
 	for i, potion := range g.potions {
@@ -429,7 +371,6 @@ func (g *GameScene) IsLoaded() bool {
 	return g.loaded
 }
 
-// Helper para encontrar o tileset correto para um determinado ID de tile
 func (g *GameScene) findTilesetForTile(tileID int) *tileset.Tileset {
 	for i := len(g.Tilesets) - 1; i >= 0; i-- {
 		if tileID >= g.Tilesets[i].FirstGid {
@@ -439,16 +380,5 @@ func (g *GameScene) findTilesetForTile(tileID int) *tileset.Tileset {
 	return nil
 }
 
-// ... (as funções IsLoaded, OnEnter, OnExit, CheckCollisions permanecem as mesmas)
 func (g *GameScene) OnEnter() {}
 func (g *GameScene) OnExit()  {}
-
-// ... (código das funções de checagem de colisão) ...
-// (Este código pode permanecer igual ao seu)
-
-// É necessário adicionar interfaces e métodos nas suas entidades para o sorteio Y e desenho
-// Exemplo em entities/sprite.go ou em cada entidade:
-// type Drawable interface {
-//     GetY() float64
-//     Draw(screen *ebiten.Image, camera *camera.Camera, sheet *spritesheet.SpriteSheet)
-// }

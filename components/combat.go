@@ -3,7 +3,7 @@ package components
 type Combat interface {
 	Health() int
 	AttackPower() int
-	Attackin() bool
+	Attacking() bool
 	Attack() bool
 	Update()
 	Damage(amount int)
@@ -50,7 +50,7 @@ func (b *BasicCombat) Health() int {
 	return b.health
 }
 
-func (b *BasicCombat) Attackin() bool {
+func (b *BasicCombat) Attacking() bool {
 	return b.attacking
 }
 
@@ -93,3 +93,7 @@ func (e *EnemyCombat) Update() {
 }
 
 var _ Combat = (*EnemyCombat)(nil)
+
+type DummyCombat struct {
+	*BasicCombat
+}

@@ -8,13 +8,47 @@
         ".",
         "tilesets"
     ],
+    "file.lastUsedOpenFilter": "Todos os Ficheiros (*)",
     "fileStates": {
-        "spawn.json": {
+        "InteriorFloor.tsj": {
+            "scaleInDock": 1.5,
+            "scaleInEditor": 3.6901
+        },
+        "dojo.json": {
             "scale": 3,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 274.5,
+                "y": 245.66666666666669
+            }
+        },
+        "elements.tsj": {
+            "dynamicWrapping": false
+        },
+        "japahouse.json": {
+            "expandedObjectLayers": [
+                4,
+                3
+            ],
+            "scale": 4,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 237,
-                "y": 159
+                "x": 265.125,
+                "y": 256
+            }
+        },
+        "spawn.json": {
+            "expandedObjectLayers": [
+                6,
+                4,
+                8,
+                9
+            ],
+            "scale": 3,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 159.83333333333331,
+                "y": 135.99999999999997
             }
         },
         "tilesets/TilesetFloor.json": {
@@ -33,10 +67,17 @@
             "dynamicWrapping": true,
             "scaleInDock": 1,
             "scaleInEditor": 1
+        },
+        "tilesets/elements.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/house.tsj": {
+            "dynamicWrapping": false
         }
     },
     "last.exportedFilePath": "C:/Users/jabir/OneDrive/Dev/rpg-go/assets/maps",
-    "last.imagePath": "C:/Users/jabir/OneDrive/Dev/rpg-go/assets/maps/tilesets",
+    "last.imagePath": "/home/pedro/Área de trabalho/dev/rpg-go-learning/assets/images",
     "last.objectTemplatePath": "C:/Users/Joao-Santos/rpg-go-learning/assets/maps/tilesets",
     "lastUsedTilesetExportFilter": "Ficheiros de conjunto de tiles JSON (*.tsj *.json)",
     "map.height": 14,
@@ -51,8 +92,11 @@
         "tilesets/TilesetFloor.json"
     ],
     "project": "rpg.tiled-project",
-    "property.type": "int",
+    "property.type": "string",
     "recentFiles": [
+        "japahouse.json",
+        "InteriorFloor.tsj",
+        "tilesets/elements.tsj",
         "tilesets/TilesetFloor.json",
         "tilesets/buildings.json",
         "spawn.json",
@@ -63,5 +107,5 @@
         "height": 16,
         "width": 16
     },
-    "tileset.type": 1
+    "tileset.type": 0
 }
