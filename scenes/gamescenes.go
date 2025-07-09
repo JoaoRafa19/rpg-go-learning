@@ -142,9 +142,13 @@ func (g *GameScene) LoadMap(mapPath string, targetSpawn string) {
 					g.enemies = append(g.enemies, newEnemy)
 
 				case "potion_spawn":
+					amount, found := tilemap.GetIntProperty("amount", obj.Properties)
+					if !found {
+						amount = 2
+					}
 					newPotion := &entities.Potion{
 						Sprite:  &entities.Sprite{Img: g.potionImg, X: obj.X, Y: obj.Y},
-						AmtHeal: 3, // Cura 3 de vida
+						AmtHeal: uint(amount),
 					}
 					g.potions = append(g.potions, newPotion)
 				}

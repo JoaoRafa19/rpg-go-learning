@@ -2,6 +2,7 @@ package tilemap
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path"
 	"rpg-go/tileset"
@@ -57,6 +58,20 @@ func (t *TilemapJSON) GenTilesets() ([]*tileset.Tileset, error) {
 	}
 
 	return tilesets, nil
+}
+
+func GetIntProperty(name string, properties []TiledProperty) (int, bool) {
+	for _, prop := range properties {
+		if prop.Name == name {
+			// O Tiled exporta números como float64, então precisamos converter.
+			if value, ok := prop.Value.(float64); ok {
+				return int(value), true
+			}
+			log.Printf("Aviso: Propriedade '%s' encontrada, mas não é um número (float64).", name)
+			return 0, false
+		}
+	}
+	return 0, false // Retorna o valor padrão 0 se a propriedade não for encontrada.
 }
 
 // opens the file, parses it, and returns the json object + potential error

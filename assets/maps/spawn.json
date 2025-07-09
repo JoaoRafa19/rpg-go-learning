@@ -212,6 +212,12 @@
                  "id":17,
                  "name":"player",
                  "point":true,
+                 "properties":[
+                        {
+                         "name":"amount",
+                         "type":"int",
+                         "value":2
+                        }],
                  "rotation":0,
                  "type":"player_spawn",
                  "visible":true,
@@ -477,10 +483,29 @@
                 }, 
                 {
                  "id":48,
+                 "properties":[
+                        {
+                         "name":"amount",
+                         "type":"float",
+                         "value":2
+                        }],
                  "template":"tilesets\/po\u00e7\u00e3o.tx",
                  "type":"potion_spawn",
                  "x":267.333333333333,
                  "y":113
+                }, 
+                {
+                 "id":49,
+                 "properties":[
+                        {
+                         "name":"amount",
+                         "type":"float",
+                         "value":1
+                        }],
+                 "template":"tilesets\/po\u00e7\u00e3o.tx",
+                 "type":"potion_spawn",
+                 "x":280,
+                 "y":255.333333333333
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -489,7 +514,7 @@
          "y":0
         }],
  "nextlayerid":5,
- "nextobjectid":49,
+ "nextobjectid":50,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

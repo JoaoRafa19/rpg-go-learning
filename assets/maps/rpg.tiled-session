@@ -51,7 +51,7 @@
         "tilesets/TilesetFloor.json"
     ],
     "project": "rpg.tiled-project",
-    "property.type": "float",
+    "property.type": "int",
     "recentFiles": [
         "tilesets/TilesetFloor.json",
         "tilesets/buildings.json",
