@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"rpg-go/camera"
+	"rpg-go/collisions"
 	"rpg-go/constants"
 	"rpg-go/entities"
 	"rpg-go/hud"
@@ -23,26 +24,27 @@ import (
 type GameScene struct {
 	player            *entities.Player
 	playerSpriteSheet *spritesheet.SpriteSheet
+	CollisionGrid     *collisions.Grid
 
 	enemies     []*entities.Enemy
 	potions     []*entities.Potion
 	dummies     []*entities.TrainingDummy
 	projectiles []*entities.Projectile
 
+	assets      *spritesheet.Assets
 	TilemapJSON *tilemap.TilemapJSON
 	Tilesets    []*tileset.Tileset
 	Camera      *camera.Camera
-	Colliders   []image.Rectangle
 	loaded      bool
 	hud         *hud.HUD
 }
 
 func NewGameScene() *GameScene {
 	return &GameScene{
-		enemies:   make([]*entities.Enemy, 0),
-		potions:   make([]*entities.Potion, 0),
-		Colliders: make([]image.Rectangle, 0),
-		loaded:    false,
+		enemies:       make([]*entities.Enemy, 0),
+		potions:       make([]*entities.Potion, 0),
+		CollisionGrid: nil,
+		loaded:        false,
 	}
 }
 
@@ -52,6 +54,13 @@ func (g *GameScene) FirstLoad() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	asset, err := spritesheet.LoadAssets()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	g.assets = asset
 
 	_, _, err = ebitenutil.NewImageFromFile("./assets/images/shuriken.png")
 	if err != nil {
@@ -74,6 +83,8 @@ func (g *GameScene) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{144, 208, 128, 255}) // Um verde mais agradável
 	opts := &ebiten.DrawImageOptions{}
 
+	objects := make([]*entities.Objects, 0)
+
 	// --- Desenha o Mapa ---
 	camX, camY := g.Camera.X, g.Camera.Y
 	for _, layer := range g.TilemapJSON.Layers {
@@ -86,13 +97,17 @@ func (g *GameScene) Draw(screen *ebiten.Image) {
 			}
 
 			tileset := g.findTilesetForTile(tileID)
+
 			if tileset == nil {
 				continue
 			}
 
 			x := float64((i % layer.Width) * constants.Tilesize)
 			y := float64((i / layer.Width) * constants.Tilesize)
-
+			if layer.Name == "objects" {
+				objects = append(objects, entities.NewObjects(tileset.Img(tileID), x, y))
+				continue
+			}
 			opts.GeoM.Reset()
 			opts.GeoM.Translate(x, y)
 			opts.GeoM.Translate(camX, camY)
@@ -103,6 +118,9 @@ func (g *GameScene) Draw(screen *ebiten.Image) {
 
 	// --- Desenha Entidades com Ordenação Y (Profundidade) ---
 	var drawables []entities.Drawable
+	for _, object := range objects {
+		drawables = append(drawables, object)
+	}
 	drawables = append(drawables, g.player)
 	for _, e := range g.enemies {
 		drawables = append(drawables, e)
@@ -122,6 +140,7 @@ func (g *GameScene) Draw(screen *ebiten.Image) {
 		d.Draw(screen, g.Camera, g.playerSpriteSheet)
 	}
 
+	g.debugDrawColliders(screen)
 	// --- Desenha o HUD ---
 	g.hud.Draw(screen)
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("FPS: %0.2f", ebiten.ActualFPS()))
@@ -205,8 +224,10 @@ func (g *GameScene) handlePlayerMovement() {
 	}
 
 	g.player.X += g.player.Dx
+	CheckCollisionsHorizontaly(g.player.Sprite, g.CollisionGrid)
 
 	g.player.Y += g.player.Dy
+	CheckCollisionsVerticaly(g.player.Sprite, g.CollisionGrid)
 }
 
 func (g *GameScene) updateEnemies() {
@@ -238,7 +259,9 @@ func (g *GameScene) updateEnemies() {
 		}
 
 		enemy.X += enemy.Dx
+		CheckCollisionsHorizontaly(enemy.Sprite, g.CollisionGrid)
 		enemy.Y += enemy.Dy
+		CheckCollisionsVerticaly(enemy.Sprite, g.CollisionGrid)
 	}
 }
 
@@ -365,6 +388,40 @@ func (g *GameScene) checkMapTransitions() (string, string) {
 		}
 	}
 	return "", ""
+}
+
+func CheckCollisionsVerticaly(sprite *entities.Sprite, grid *collisions.Grid) {
+	spriteBounds := image.Rect(int(sprite.X), int(sprite.Y), int(sprite.X)+constants.Tilesize, int(sprite.Y)+constants.Tilesize)
+
+	// Pega APENAS os colisores próximos!
+	nearbyColliders := grid.GetNearbyColliders(spriteBounds)
+
+	for _, collider := range nearbyColliders { // Itera sobre a lista menor
+		if collider.Overlaps(spriteBounds) {
+			if sprite.Dy > 0.0 {
+				sprite.Y = float64(collider.Min.Y) - constants.Tilesize
+			} else if sprite.Dy < 0.0 {
+				sprite.Y = float64(collider.Max.Y)
+			}
+		}
+	}
+}
+
+func CheckCollisionsHorizontaly(sprite *entities.Sprite, grid *collisions.Grid) {
+	spriteBounds := image.Rect(int(sprite.X), int(sprite.Y), int(sprite.X)+constants.Tilesize, int(sprite.Y)+constants.Tilesize)
+
+	// Pega APENAS os colisores próximos!
+	nearbyColliders := grid.GetNearbyColliders(spriteBounds)
+
+	for _, collider := range nearbyColliders { // Itera sobre a lista menor
+		if collider.Overlaps(spriteBounds) {
+			if sprite.Dx > 0.0 {
+				sprite.X = float64(collider.Min.X) - constants.Tilesize
+			} else if sprite.Dx < 0.0 {
+				sprite.X = float64(collider.Max.X)
+			}
+		}
+	}
 }
 
 func (g *GameScene) IsLoaded() bool {

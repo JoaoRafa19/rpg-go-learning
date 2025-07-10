@@ -15,8 +15,12 @@
             "scaleInEditor": 3.6901
         },
         "dojo.json": {
+            "expandedObjectLayers": [
+                4,
+                3
+            ],
             "scale": 3,
-            "selectedLayer": 3,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 274.5,
                 "y": 245.66666666666669
@@ -44,11 +48,11 @@
                 8,
                 9
             ],
-            "scale": 3,
-            "selectedLayer": 4,
+            "scale": 11,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 159.83333333333331,
-                "y": 135.99999999999997
+                "x": 97.5,
+                "y": 80.81818181818181
             }
         },
         "tilesets/TilesetFloor.json": {

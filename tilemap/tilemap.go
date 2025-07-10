@@ -10,12 +10,13 @@ import (
 
 // data we want for one layer in our list of layers
 type TilemapLayerJSON struct {
-	Data    []int         `json:"data"`
-	Width   int           `json:"width"`
-	Height  int           `json:"height"`
-	Name    string        `json:"name"`
-	Type    string        `json:"type"` // "tilelayer" ou "objectgroup"
-	Objects []TiledObject `json:"objects"`
+	Data       []int         `json:"data"`
+	Width      int           `json:"width"`
+	Height     int           `json:"height"`
+	Name       string        `json:"name"`
+	Type       string        `json:"type"` // "tilelayer" ou "objectgroup"
+	Objects    []TiledObject `json:"objects"`
+	Collisions []TiledObject `json:"collisions"`
 }
 
 type TiledProperty struct {
@@ -32,6 +33,7 @@ type TiledObject struct {
 	Y          float64         `json:"y"`
 	Width      float64         `json:"width"`
 	Height     float64         `json:"height"`
+	GID        int             `json:"gid,omitempty"`
 	Properties []TiledProperty `json:"properties"`
 }
 
